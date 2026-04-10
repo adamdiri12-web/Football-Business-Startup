@@ -252,6 +252,7 @@
     .toast { bottom: max(2rem, calc(env(safe-area-inset-bottom, 0px) + 1rem)); }
   }
 </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -662,109 +663,83 @@ function showError(id, msg) {
   setTimeout(() => { el.style.display = 'none'; }, 4000);
 }
 
-function normalizePhone(raw) {
-  return raw.replace(/[^0-9]/g, '').slice(-10);  // strip to last 10 digits
-}
-
-function sendVerificationCode() {
-  const phone = document.getElementById('signupPhone').value.trim();
-  const normalized = normalizePhone(phone);
-  if (normalized.length < 10) {
-    showError('signupError', 'Please enter a valid 10-digit phone number.');
-    return;
-  }
-  // Check if this phone is already used by another account
-  if (verifiedPhones[normalized]) {
-    showError('signupError', 'This phone number is already linked to an account.');
-    return;
-  }
-  // Generate a 4-digit code (demo: shown in toast; production: send via SMS API)
-  pendingVerificationCode = String(Math.floor(1000 + Math.random() * 9000));
-  phoneVerified = false;
-  verifiedPhoneNumber = null;
-
-  // Show the verify input
-  document.getElementById('verifyRow').style.display = 'flex';
-  document.getElementById('signupCode').value = '';
-  document.getElementById('signupCode').focus();
-  document.getElementById('phoneVerifiedBadge').style.display = 'none';
-
-  // Update button state
-  const btn = document.getElementById('sendCodeBtn');
-  btn.textContent = 'Resend';
-  btn.classList.add('sent');
-
-  // In production, this would call your SMS API (Twilio, etc.)
-  // For demo, show the code in a toast
-  showToast(`Demo: Your verification code is ${pendingVerificationCode}`);
-}
-
-function verifyCode() {
-  const entered = document.getElementById('signupCode').value.trim();
-  if (!entered) {
-    showError('signupError', 'Please enter the 4-digit code.');
-    return;
-  }
-  if (entered !== pendingVerificationCode) {
-    showError('signupError', 'Incorrect code. Please try again.');
-    return;
-  }
-  // Code matches — mark phone as verified
-  phoneVerified = true;
-  verifiedPhoneNumber = normalizePhone(document.getElementById('signupPhone').value.trim());
-  document.getElementById('verifyRow').style.display = 'none';
-  document.getElementById('phoneVerifiedBadge').style.display = 'flex';
-  document.getElementById('signupPhone').setAttribute('readonly', true);
-  document.getElementById('signupPhone').style.background = 'var(--green-light)';
-  document.getElementById('sendCodeBtn').disabled = true;
-  showToast('Phone number verified!');
-}
-
-function handleSignup() {
-  const name = document.getElementById('signupName').value.trim();
-  const email = document.getElementById('signupEmail').value.trim().toLowerCase();
-  const phone = document.getElementById('signupPhone').value.trim();
-  const password = document.getElementById('signupPassword').value;
-  const normalized = normalizePhone(phone);
-  if (!name || !email || !phone || !password) { showError('signupError', 'Please fill in all required fields.'); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('signupError', 'Please enter a valid email address.'); return; }
-  if (normalized.length < 10) { showError('signupError', 'Please enter a valid 10-digit phone number.'); return; }
-  if (!phoneVerified) { showError('signupError', 'Please verify your phone number before signing up.'); return; }
-  if (password.length < 6) { showError('signupError', 'Password must be at least 6 characters.'); return; }
-  if (users[email]) { showError('signupError', 'An account with this email already exists.'); return; }
-  if (verifiedPhones[normalized]) { showError('signupError', 'This phone number is already linked to another account.'); return; }
-  // Register the phone number as used
-  verifiedPhones[normalized] = true;
-  users[email] = { name, email, phone: normalized, password, gamesBooked: 0, bookedSessionIds: [] };
-  currentUser = users[email];
-  // Reset verification state for next signup
-  phoneVerified = false;
-  verifiedPhoneNumber = null;
-  pendingVerificationCode = null;
-  document.getElementById('signupPhone').removeAttribute('readonly');
-  document.getElementById('signupPhone').style.background = '';
-  document.getElementById('sendCodeBtn').disabled = false;
-  document.getElementById('sendCodeBtn').textContent = 'Send Code';
-  document.getElementById('sendCodeBtn').classList.remove('sent');
-  document.getElementById('phoneVerifiedBadge').style.display = 'none';
-  document.getElementById('verifyRow').style.display = 'none';
-  closeAllModals();
-  renderNavAuth();
-  renderSessions(currentFilter);
-  showToast(`Welcome to Saha Sports, ${name.split(' ')[0]}! Your first game is 50% off.`);
-}
-
-function handleLogin() {
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-  const password = document.getElementById('loginPassword').value;
-  if (!email || !password) { showError('loginError', 'Please enter your email and password.'); return; }
-  if (!users[email] || users[email].password !== password) { showError('loginError', 'Invalid email or password.'); return; }
-  currentUser = users[email];
-  closeAllModals();
-  renderNavAuth();
-  renderSessions(currentFilter);
-  showToast(`Welcome back, ${currentUser.name.split(' ')[0]}!`);
-}
+// --- Supabase auth client ---
+    window.sbClient = window.supabase.createClient("https://onqulirxclvkvxhnctck.supabase.co", "sb_publishable_4Lx7DKhgOT7U1JrQtp1qdw_xjY_hV1Y");
+    window.__phoneVerified = false;
+    function normalizePhone(raw) {
+      const d = (raw || "").replace(/[^0-9]/g, "");
+      if (!d) return "";
+      if (d.length === 10) return "+1" + d;
+      if (d.length === 11 && d[0] === "1") return "+" + d;
+      return "+" + d;
+    }
+    
+    async function sendVerificationCode() {
+      const raw = document.getElementById("signupPhone").value.trim();
+      const phone = normalizePhone(raw);
+      if (!phone || phone.length < 11) { showError("signupError", "Enter a valid phone number"); return; }
+      window.__signupPhone = phone;
+      const btn = document.getElementById("sendCodeBtn");
+      if (btn) { btn.disabled = true; btn.textContent = "Sending..."; }
+      try {
+        const { error } = await window.sbClient.auth.signInWithOtp({ phone: phone });
+        if (error) { showError("signupError", error.message || "Could not send code"); if (btn) { btn.disabled = false; btn.textContent = "Send code"; } return; }
+        const row = document.getElementById("verifyRow"); if (row) row.style.display = "";
+        showToast("Verification code sent to " + phone);
+        if (btn) { btn.textContent = "Resend code"; btn.disabled = false; }
+      } catch (e) { showError("signupError", "Network error sending code"); if (btn) { btn.disabled = false; btn.textContent = "Send code"; } }
+    }
+    
+    async function verifyCode() {
+      const code = (document.getElementById("signupCode").value || "").trim();
+      const phone = window.__signupPhone;
+      if (!code) { showError("signupError", "Enter the code"); return; }
+      if (!phone) { showError("signupError", "Send a code first"); return; }
+      try {
+        const { error } = await window.sbClient.auth.verifyOtp({ phone: phone, token: code, type: "sms" });
+        if (error) { showError("signupError", "Invalid or expired code"); return; }
+        window.__phoneVerified = true;
+        const badge = document.getElementById("phoneVerifiedBadge"); if (badge) badge.style.display = "";
+        showToast("Phone verified!");
+      } catch (e) { showError("signupError", "Verification failed"); }
+    }
+    
+    async function handleSignup(event) {
+      if (event) event.preventDefault();
+      if (!window.__phoneVerified) { showError("signupError", "Please verify your phone first"); return; }
+      const name = (document.getElementById("signupName").value || "").trim();
+      const email = (document.getElementById("signupEmail").value || "").trim();
+      const password = document.getElementById("signupPassword").value || "";
+      const phone = window.__signupPhone;
+      if (!name || !email || !password) { showError("signupError", "Fill in all fields"); return; }
+      try {
+        const { data, error } = await window.sbClient.auth.signUp({ email: email, password: password, phone: phone, options: { data: { full_name: name } } });
+        if (error) { showError("signupError", error.message || "Signup failed"); return; }
+        currentUser = { name: name, email: email, phone: phone };
+        renderNavAuth();
+        if (typeof renderSessions === "function") renderSessions(currentFilter);
+        closeAllModals();
+        showToast("Welcome, " + name + "!");
+      } catch (e) { showError("signupError", "Signup error"); }
+    }
+    
+    async function handleLogin(event) {
+      if (event) event.preventDefault();
+      const email = (document.getElementById("loginEmail").value || "").trim();
+      const password = document.getElementById("loginPassword").value || "";
+      if (!email || !password) { showError("loginError", "Enter email and password"); return; }
+      try {
+        const { data, error } = await window.sbClient.auth.signInWithPassword({ email: email, password: password });
+        if (error) { showError("loginError", "Invalid email or password"); return; }
+        const u = data && data.user;
+        const meta = (u && u.user_metadata) || {};
+        currentUser = { name: meta.full_name || email.split("@")[0], email: email, phone: (u && u.phone) ? ("+" + u.phone.replace(/[^0-9]/g,"")) : "" };
+        renderNavAuth();
+        if (typeof renderSessions === "function") renderSessions(currentFilter);
+        closeAllModals();
+        showToast("Welcome back!");
+      } catch (e) { showError("loginError", "Login error"); }
+    }
 
 function handleLogout() {
   currentUser = null;
