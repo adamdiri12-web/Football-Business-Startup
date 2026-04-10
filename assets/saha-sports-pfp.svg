@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#5E9A4C"/>
+      <stop offset="100%" stop-color="#477838"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1080" height="1080" fill="url(#bg)"/>
+
+  <!-- Monogram box -->
+  <rect x="290" y="240" width="500" height="500" fill="none" stroke="#FAFAF9" stroke-width="22"/>
+
+  <!-- SS monogram -->
+  <text x="540" y="580"
+        font-family="'Bebas Neue', 'Arial Narrow', sans-serif"
+        font-size="380"
+        font-weight="400"
+        fill="#FAFAF9"
+        text-anchor="middle"
+        letter-spacing="10">SS</text>
+
+  <!-- Wordmark -->
+  <text x="540" y="860"
+        font-family="'Oswald', 'Arial', sans-serif"
+        font-size="82"
+        font-weight="700"
+        fill="#FAFAF9"
+        text-anchor="middle"
+        letter-spacing="12">SAHA SPORTS</text>
+
+  <!-- Tagline -->
+  <text x="540" y="930"
+        font-family="'DM Sans', 'Arial', sans-serif"
+        font-size="38"
+        font-weight="500"
+        fill="#FAFAF9"
+        text-anchor="middle"
+        letter-spacing="6"
+        opacity="0.85">SPORT DROP-INS · GTA</text>
+</svg>
