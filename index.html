@@ -436,15 +436,23 @@
   <div class="section-label">Get in Touch</div>
   <div class="section-title">Questions? Ask away.</div>
   <div class="contact-grid">
-    <div class="contact-form">
+    <form class="contact-form" id="contactForm"
+          action="https://formsubmit.co/info.sahasports@gmail.com"
+          method="POST"
+          onsubmit="return handleContactSubmit(this)">
+      <input type="hidden" name="_subject" value="New message from Saha Sports site">
+      <input type="hidden" name="_captcha" value="false">
+      <input type="hidden" name="_template" value="table">
+      <input type="hidden" name="_next" value="https://adamdiri12-web.github.io/Football-Business-Startup/pitch-up.html#contact-thanks">
+      <input type="text" name="_honey" style="display:none">
       <label for="contactName" class="sr-only">Your name</label>
-      <input type="text" id="contactName" placeholder="Your name">
+      <input type="text" id="contactName" name="name" placeholder="Your name" required>
       <label for="contactEmail" class="sr-only">Email address</label>
-      <input type="email" id="contactEmail" placeholder="Email address">
+      <input type="email" id="contactEmail" name="email" placeholder="Email address" required>
       <label for="contactMessage" class="sr-only">Your message</label>
-      <textarea id="contactMessage" placeholder="Your message..."></textarea>
-      <button class="btn-primary" onclick="handleContactSubmit(this)">Send Message →</button>
-    </div>
+      <textarea id="contactMessage" name="message" placeholder="Your message..." required></textarea>
+      <button type="submit" class="btn-primary">Send Message →</button>
+    </form>
     <div class="contact-info">
       <div class="contact-item">
         <div class="contact-icon">📍</div>
@@ -975,16 +983,33 @@ function showToast(msg) {
   setTimeout(() => { t.style.display = 'none'; }, 5000);
 }
 
-function handleContactSubmit(btn) {
-  const form = btn.closest('.contact-form');
-  const inputs = form.querySelectorAll('input, textarea');
-  const name = inputs[0].value.trim();
-  const email = inputs[1].value.trim();
-  const message = inputs[2].value.trim();
-  if (!name || !email || !message) { showToast('Please fill in all fields before sending.'); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Please enter a valid email address.'); return; }
-  inputs.forEach(i => i.value = '');
-  showToast('Message sent! We\'ll get back to you soon.');
+function handleContactSubmit(form) {
+  const name = form.name.value.trim();
+  const email = form.email.value.trim();
+  const message = form.message.value.trim();
+  if (!name || !email || !message) { showToast('Please fill in all fields before sending.'); return false; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Please enter a valid email address.'); return false; }
+  const btn = form.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  fetch(form.action, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+    body: new FormData(form)
+  }).then(r => {
+    if (r.ok) {
+      form.reset();
+      showToast('Message sent! We\'ll get back to you soon.');
+    } else {
+      showToast('Something went wrong. Please email info.sahasports@gmail.com directly.');
+    }
+  }).catch(() => {
+    showToast('Network error. Please email info.sahasports@gmail.com directly.');
+  }).finally(() => {
+    btn.disabled = false;
+    btn.textContent = 'Send Message →';
+  });
+  return false;
 }
 
 // Close modals on backdrop click
