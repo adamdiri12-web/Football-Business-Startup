@@ -1000,17 +1000,15 @@ function handleContactSubmit(btn) {
   }
   const originalLabel = btn ? btn.innerHTML : null;
   if (btn) { btn.disabled = true; btn.innerHTML = 'Sending...'; }
-  const fd = new FormData();
-  fd.append('name', name);
-  fd.append('email', email);
-  fd.append('message', message);
-  fd.append('_subject', 'New contact from ' + name + ' via Saha Sports website');
-  fd.append('_captcha', 'false');
-  fd.append('_template', 'table');
-  fetch('https://formsubmit.co/ajax/' + encodeURIComponent("info.sahasports@gmail.com"), {
+  const body = new URLSearchParams();
+  body.append('form-name', 'contact');
+  body.append('name', name);
+  body.append('email', email);
+  body.append('message', message);
+  fetch('/', {
     method: 'POST',
-    headers: { 'Accept': 'application/json' },
-    body: fd
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString()
   }).then(function(res){
     if (!res.ok) throw new Error('Request failed: ' + res.status);
     if (typeof showToast === 'function') showToast("Message sent! We'll be in touch soon.");
@@ -1044,5 +1042,12 @@ document.getElementById('footerYear').textContent = new Date().getFullYear();
 renderNavAuth();
 renderSessions('all');
 </script>
+
+<!-- Hidden form for Netlify Forms build-time detection -->
+<form name="contact" netlify netlify-honeypot="bot-field" hidden>
+  <input type="text" name="name" />
+  <input type="email" name="email" />
+  <textarea name="message"></textarea>
+</form>
 </body>
 </html>
